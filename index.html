@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AKIJ Light Engineering – OEE Analytics Engine</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#eef2ff 0%,#f8fafc 60%,#ecfdf5 100%);min-height:100vh;padding:18px;color:#0f172a}
+.top-bar{height:4px;background:linear-gradient(90deg,#4338ca,#6366f1,#8b5cf6);border-radius:2px;margin-bottom:14px}
+.card{background:#fff;border-radius:14px;box-shadow:0 6px 18px rgba(15,23,42,.06);padding:18px 22px;margin-bottom:16px}
+.topnav{display:flex;align-items:center;justify-content:space-between;background:#fff;padding:12px 20px;border-radius:14px;box-shadow:0 6px 18px rgba(15,23,42,.06);margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px}
+.brand-title{font-size:15px;font-weight:800;letter-spacing:.5px}
+.brand-sub{font-size:11px;color:#64748b;letter-spacing:.5px}
+.live-badge{display:flex;align-items:center;gap:8px;border:1.5px solid #10b981;color:#10b981;padding:6px 14px;border-radius:20px;font-weight:600;font-size:13px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#10b981}
+.live-dot.pulse{animation:pulse 1s infinite}
+@keyframes pulse{0%{opacity:.3}50%{opacity:1}100%{opacity:.3}}
+.btn-ghost{padding:8px 14px;border:1.5px solid #e2e8f0;background:#fff;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px}
+.btn-ghost:hover{background:#f1f5f9}
+.btn-primary{padding:8px 18px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;box-shadow:0 4px 10px rgba(99,102,241,.3)}
+.btn-primary:hover{background:#4f46e5}
+.filters{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.filter-item{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#475569;letter-spacing:.5px}
+.filters input,.filters select{padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fff}
+.filter-sep{width:1px;height:28px;background:#e2e8f0}
+.machines-row{display:flex;align-items:center;gap:16px}
+.icon-box{width:46px;height:46px;border-radius:10px;background:#eef2ff;display:flex;align-items:center;justify-content:center;font-size:22px}
+.icon-box.sm{width:42px;height:42px;font-size:18px}
+.icon-box.purple{background:#ede9fe}.icon-box.green{background:#dcfce7}.icon-box.red{background:#fee2e2}.icon-box.orange{background:#ffedd5}
+.meta{font-size:11px;font-weight:700;color:#64748b;letter-spacing:.6px}
+.big-num{font-size:30px;font-weight:800;color:#0f172a;display:inline}
+.unit{font-size:12px;color:#64748b;margin-left:6px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.kpi-card{background:#fff;border-radius:14px;box-shadow:0 6px 18px rgba(15,23,42,.06);padding:18px;border-top:3px solid transparent;display:flex;flex-direction:column;gap:8px}
+.kpi-card.mini{flex-direction:row;align-items:center;gap:14px}
+.border-indigo{border-color:#6366f1}.border-blue{border-color:#3b82f6}.border-orange{border-color:#f97316}.border-green{border-color:#10b981}
+.kpi-head{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.6px}
+.kpi-val{font-size:34px;font-weight:800}
+.kpi-val.indigo{color:#6366f1}.kpi-val.blue{color:#3b82f6}.kpi-val.orange{color:#f97316}.kpi-val.green{color:#10b981}
+.bar{height:6px;border-radius:4px;background:#f1f5f9;overflow:hidden}
+.fill{height:100%;border-radius:4px;transition:width .6s}
+.fill.indigo{background:linear-gradient(90deg,#6366f1,#8b5cf6)}
+.fill.blue{background:linear-gradient(90deg,#3b82f6,#06b6d4)}
+.fill.orange{background:linear-gradient(90deg,#f97316,#facc15)}
+.fill.green{background:linear-gradient(90deg,#10b981,#34d399)}
+.kpi-sub{font-size:11px;color:#64748b;font-weight:600}
+.charts-row{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-bottom:16px}
+.chart-card h3{font-size:13px;font-weight:700;color:#1e293b;letter-spacing:.5px;margin-bottom:14px}
+.chart-wrap{position:relative;height:300px}
+.chart-wrap.tall{height:380px}
+.chart-wrap.pie{height:240px;flex:1}
+.pie-row{display:flex;gap:14px;align-items:center}
+.pie-legend{flex:1;display:flex;flex-direction:column;gap:6px;font-size:12px;max-height:240px;overflow-y:auto}
+.legend-row{display:grid;grid-template-columns:14px 1fr auto auto;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%}
+.legend-row .lbl{color:#334155;font-weight:600}
+.legend-row .val{color:#0f172a;font-weight:700}
+.legend-row .pct{color:#64748b;font-size:11px;width:48px;text-align:right}
+.table-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.table-head h3{font-size:13px;font-weight:700;letter-spacing:.5px;color:#1e293b}
+.rowcount{font-size:11px;color:#64748b;font-weight:600;margin-left:8px;background:#f1f5f9;padding:3px 8px;border-radius:10px}
+.search{display:flex;align-items:center;gap:6px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:6px 12px;min-width:240px}
+.search input{border:none;outline:none;background:transparent;width:100%;font-size:13px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:880px}
+th{text-align:left;padding:10px 12px;font-size:11px;font-weight:800;color:#64748b;letter-spacing:.6px;border-bottom:1.5px solid #e2e8f0}
+td{padding:12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
+tr:hover td{background:#f8fafc}
+.chip{background:#eef2ff;color:#4338ca;padding:3px 10px;border-radius:14px;font-size:11px;font-weight:700}
+.ellipsis{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.num.blue{color:#3b82f6}.num.red{color:#dc2626}
+.oee-pill{display:inline-block;padding:3px 10px;border-radius:14px;font-size:11px;font-weight:700}
+.oee-pill.ok{background:#dcfce7;color:#15803d}
+.oee-pill.warn{background:#fef9c3;color:#a16207}
+.oee-pill.bad{background:#fee2e2;color:#b91c1c}
+.foot{text-align:center;color:#94a3b8;font-size:12px;padding:18px}
+.loading{text-align:center;padding:40px;color:#64748b;font-size:14px}
+@media (max-width:1024px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.charts-row{grid-template-columns:1fr}}
+@media (max-width:600px){body{padding:10px}.topnav{flex-direction:column;align-items:flex-start}.brand-title{font-size:13px}.kpi-grid{grid-template-columns:1fr}.kpi-val{font-size:28px}.pie-row{flex-direction:column}.filters{font-size:12px}.big-num{font-size:24px}}
+</style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<header class="topnav">
+  <button class="btn-ghost">← Home</button>
+  <div class="brand">
+    <div class="logo">🏭</div>
+    <div>
+      <div class="brand-title">AKIJ LIGHT ENGINEERING LTD</div>
+      <div class="brand-sub">INJECTION MOLDING DIVISION — OEE ANALYTICS ENGINE</div>
+    </div>
+  </div>
+  <div class="live-badge"><span id="liveDot" class="live-dot"></span> Live Feed Active</div>
+</header>
+
+<section class="card filters">
+  <div class="filter-item">📅 <span>DATE RANGE</span></div>
+  <input type="date" id="dateFrom">
+  <input type="date" id="dateTo">
+  <div class="filter-sep"></div>
+  <select id="shiftFilter"><option value="ALL">All Shifts</option></select>
+  <button id="resetBtn" class="btn-ghost">↺ Reset</button>
+  <button id="refreshBtn" class="btn-primary">⟳ Refresh</button>
+</section>
+
+<section class="card machines-row">
+  <div class="icon-box">🛠</div>
+  <div><div class="meta">ACTIVE MACHINES RUN</div><div class="big-num" id="kpiMachines">0</div></div>
+</section>
+
+<section class="kpi-grid">
+  <div class="kpi-card border-indigo">
+    <div class="kpi-head">OVERALL OEE <span>📊</span></div>
+    <div class="kpi-val indigo" id="kpiOEE">0%</div>
+    <div class="bar"><div class="fill indigo" id="oeeBar"></div></div>
+    <div class="kpi-sub">TARGET ≥ 85.0%</div>
+  </div>
+  <div class="kpi-card border-blue">
+    <div class="kpi-head">AVAILABILITY <span>⏱</span></div>
+    <div class="kpi-val blue" id="kpiAvailability">0%</div>
+    <div class="bar"><div class="fill blue" id="availBar"></div></div>
+    <div class="kpi-sub">Uptime Efficiency</div>
+  </div>
+  <div class="kpi-card border-orange">
+    <div class="kpi-head">PERFORMANCE <span>⚡</span></div>
+    <div class="kpi-val orange" id="kpiPerformance">0%</div>
+    <div class="bar"><div class="fill orange" id="perfBar"></div></div>
+    <div class="kpi-sub">Speed &amp; Cycle Precision</div>
+  </div>
+  <div class="kpi-card border-green">
+    <div class="kpi-head">QUALITY <span>✅</span></div>
+    <div class="kpi-val green" id="kpiQuality">0%</div>
+    <div class="bar"><div class="fill green" id="qualBar"></div></div>
+    <div class="kpi-sub">Yield / Defect Rate</div>
+  </div>
+</section>
+
+<section class="kpi-grid">
+  <div class="kpi-card mini">
+    <div class="icon-box sm purple">📦</div>
+    <div><div class="meta">TOTAL OUTPUT</div><div class="big-num" id="kpiOutput">0</div><span class="unit">Pcs</span></div>
+  </div>
+  <div class="kpi-card mini">
+    <div class="icon-box sm green">📋</div>
+    <div><div class="meta">GOOD YIELD</div><div class="big-num" id="kpiGood">0</div><span class="unit">Pcs</span></div>
+  </div>
+  <div class="kpi-card mini">
+    <div class="icon-box sm red">⚠</div>
+    <div><div class="meta">UNPLANNED LOSSES</div><div class="big-num" id="kpiLosses">0</div><span class="unit">Mins</span></div>
+  </div>
+  <div class="kpi-card mini border-orange">
+    <div class="icon-box sm orange">📅</div>
+    <div><div class="meta">PLANNED DOWNTIME</div><div class="big-num" id="kpiPlanned">0</div><span class="unit">Mins</span></div>
+  </div>
+</section>
+
+<section class="charts-row">
+  <div class="card chart-card">
+    <h3>📈 OEE DAILY TREND</h3>
+    <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+  </div>
+  <div class="card chart-card">
+    <h3>🥧 UNPLANNED DOWNTIME BREAKDOWN</h3>
+    <div class="pie-row">
+      <div class="chart-wrap pie"><canvas id="pieChart"></canvas></div>
+      <div id="pieLegend" class="pie-legend"></div>
+    </div>
+  </div>
+</section>
+
+<section class="card chart-card">
+  <h3>📊 SHIFT TARGET VS ACTUAL OUTPUT</h3>
+  <div class="chart-wrap tall"><canvas id="barChart"></canvas></div>
+</section>
+
+<section class="card">
+  <div class="table-head">
+    <h3>📋 FILTERED PRODUCTION RECORDS <span id="rowCount" class="rowcount"></span></h3>
+    <div class="search">🔎 <input id="searchBox" placeholder="Search records..."></div>
+  </div>
+  <div class="table-wrap">
+    <table id="recordsTable">
+      <thead><tr>
+        <th>DATE</th><th>MACHINE</th><th>SHIFT</th><th>PRODUCT CRITERIA</th>
+        <th>SUPERVISOR</th><th>TARGET (PCS)</th><th>ACTUAL (PCS)</th>
+        <th>WASTAGE (PCS)</th><th>OEE %</th>
+      </tr></thead>
+      <tbody><tr><td colspan="9" class="loading">Loading data from Google Sheets…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="foot">© AKIJ Light Engineering Ltd · OEE Analytics Engine · Live from Google Sheets</footer>
+
+<script>
+/* ============ CONFIG ============ */
+const CONFIG = {
+  SHEET_ID: '1WduS-Bgeab_1YTWc3pZ0WAOMEN_oE4DFmRH4OVT8D_I',
+  GID: '1203093323',
+  REFRESH_MS: 60000,
+  TARGET_OEE: 85
+};
+
+/* Column indexes (A=0, B=1 …)
+   Per your sheet: B=Date, C=Shift, D=Machine, F=Item, I=Supervisor,
+   J=Available time, M=Downtime, N=Reason, O=Capacity, P=Actual, S=Reject,
+   T=Availability, U=Performance, V=Quality (all as decimal 0-1 OR % 0-100) */
+const COL = {
+  DATE:1, SHIFT:2, MACHINE:3, ITEM:5, SUPERVISOR:8,
+  AVAILABLE:9, PLANNED:11, DOWNTIME:12, REASON:13,
+  CAPACITY:14, ACTUAL:15, REJECT:18,
+  AVAILABILITY:19, PERFORMANCE:20, QUALITY:21
+};
+
+/* ============ STATE ============ */
+let RAW = [];
+let charts = {};
+
+/* ============ HELPERS ============ */
+function parseNum(v){
+  if (v==='' || v==null) return 0;
+  const n = parseFloat(String(v).replace(/[, %]/g,''));
+  return isNaN(n) ? 0 : n;
+}
+/* Returns the value as a percentage (0-100). Auto-detects if input is 0-1 decimal. */
+function asPct(v){
+  const n = parseNum(v);
+  if (n === 0) return 0;
+  return n <= 1.5 ? n * 100 : n;
+}
+/* Per-row OEE = T × U × V (returned as % 0-100) */
+function rowOEE(r){
+  const a = asPct(r[COL.AVAILABILITY]) / 100;
+  const p = asPct(r[COL.PERFORMANCE])  / 100;
+  const q = asPct(r[COL.QUALITY])      / 100;
+  return a * p * q * 100;
+}
+
+/* ============ SHEET LOADER (gviz JSON, no API key) ============ */
+async function loadSheet(){
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&gid=${CONFIG.GID}`;
+  const res = await fetch(url);
+  const text = await res.text();
+  const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}')+1));
+  return json.table.rows.map(r => (r.c||[]).map(c => c==null ? '' : (c.f!=null ? c.f : c.v)));
+}
+
+/* ============ INIT ============ */
+document.addEventListener('DOMContentLoaded', async () => {
+  await refreshAll();
+  document.getElementById('refreshBtn').onclick = refreshAll;
+  document.getElementById('resetBtn').onclick = resetFilters;
+  document.getElementById('shiftFilter').onchange = render;
+  document.getElementById('dateFrom').onchange = render;
+  document.getElementById('dateTo').onchange = render;
+  document.getElementById('searchBox').oninput = renderTable;
+  setInterval(refreshAll, CONFIG.REFRESH_MS);
+});
+
+async function refreshAll(){
+  document.getElementById('liveDot').classList.add('pulse');
+  try {
+    RAW = await loadSheet();
+    populateShiftFilter();
+    render();
+  } catch(e){
+    console.error(e);
+    document.querySelector('#recordsTable tbody').innerHTML =
+      `<tr><td colspan="9" class="loading">⚠ Could not load data. Make sure your sheet is shared as "Anyone with the link → Viewer".</td></tr>`;
+  }
+  document.getElementById('liveDot').classList.remove('pulse');
+}
+
+function resetFilters(){
+  document.getElementById('shiftFilter').value='ALL';
+  document.getElementById('dateFrom').value='';
+  document.getElementById('dateTo').value='';
+  document.getElementById('searchBox').value='';
+  render();
+}
+
+function populateShiftFilter(){
+  const sel = document.getElementById('shiftFilter');
+  const cur = sel.value;
+  const shifts = [...new Set(RAW.map(r=>r[COL.SHIFT]).filter(Boolean))];
+  sel.innerHTML = '<option value="ALL">All Shifts</option>' +
+    shifts.map(s=>`<option value="${s}">${s}</option>`).join('');
+  sel.value = cur || 'ALL';
+}
+
+function getFiltered(){
+  const shift = document.getElementById('shiftFilter').value;
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+  return RAW.filter(r=>{
+    if(!r[COL.DATE]) return false;
+    if(shift!=='ALL' && r[COL.SHIFT]!==shift) return false;
+    const d = new Date(r[COL.DATE]);
+    if(from && d < new Date(from)) return false;
+    if(to && d > new Date(to)) return false;
+    return true;
+  });
+}
+
+function render(){
+  const data = getFiltered();
+  renderKPIs(data);
+  renderTrend(data);
+  renderDowntimePie(data);
+  renderShiftBars(data);
+  renderTable();
+}
+
+/* ============ KPIs ============ */
+function avg(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+
+function renderKPIs(data){
+  /* Output, yield, losses, planned */
+  const totalActual = data.reduce((s,r)=>s+parseNum(r[COL.ACTUAL]),0);
+  const totalReject = data.reduce((s,r)=>s+parseNum(r[COL.REJECT]),0);
+  const totalDown   = data.reduce((s,r)=>s+parseNum(r[COL.DOWNTIME]),0);
+  const totalPlan   = data.reduce((s,r)=>s+parseNum(r[COL.PLANNED]),0);
+  const goodYield   = totalActual - totalReject;
+
+  /* Average %, OEE = average of (T×U×V) per row */
+  const av = avg(data.map(r=>asPct(r[COL.AVAILABILITY])).filter(v=>v>0));
+  const pf = avg(data.map(r=>asPct(r[COL.PERFORMANCE])).filter(v=>v>0));
+  const qu = avg(data.map(r=>asPct(r[COL.QUALITY])).filter(v=>v>0));
+  const oee = avg(data.map(r=>rowOEE(r)).filter(v=>v>0));
+
+  const machines = new Set(data.map(r=>r[COL.MACHINE]).filter(Boolean));
+
+  set('kpiMachines', machines.size);
+  set('kpiOEE',          oee.toFixed(2)+'%');
+  set('kpiAvailability', av.toFixed(2)+'%');
+  set('kpiPerformance',  pf.toFixed(2)+'%');
+  set('kpiQuality',      qu.toFixed(2)+'%');
+  set('kpiOutput',       totalActual.toLocaleString());
+  set('kpiGood',         goodYield.toLocaleString());
+  set('kpiLosses',       totalDown.toLocaleString());
+  set('kpiPlanned',      totalPlan.toLocaleString());
+
+  document.getElementById('oeeBar').style.width   = Math.min(oee,100)+'%';
+  document.getElementById('availBar').style.width = Math.min(av,100)+'%';
+  document.getElementById('perfBar').style.width  = Math.min(pf,100)+'%';
+  document.getElementById('qualBar').style.width  = Math.min(qu,100)+'%';
+}
+function set(id,val){ document.getElementById(id).textContent = val; }
+
+/* ============ TREND ============ */
+function renderTrend(data){
+  const byDate = {};
+  data.forEach(r=>{
+    const d = r[COL.DATE]; if(!d) return;
+    if(!byDate[d]) byDate[d] = {av:[],pf:[],qu:[],oee:[]};
+    byDate[d].av.push(asPct(r[COL.AVAILABILITY]));
+    byDate[d].pf.push(asPct(r[COL.PERFORMANCE]));
+    byDate[d].qu.push(asPct(r[COL.QUALITY]));
+    byDate[d].oee.push(rowOEE(r));
+  });
+  const labels = Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b));
+  const oee=[],av=[],pf=[],qu=[];
+  labels.forEach(d=>{
+    av.push(avg(byDate[d].av).toFixed(2));
+    pf.push(avg(byDate[d].pf).toFixed(2));
+    qu.push(avg(byDate[d].qu).toFixed(2));
+    oee.push(avg(byDate[d].oee).toFixed(2));
+  });
+  const ctx = document.getElementById('trendChart');
+  if(charts.trend) charts.trend.destroy();
+  charts.trend = new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'OEE %',data:oee,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.1)',tension:.35,fill:true,borderWidth:2},
+      {label:'Availability %',data:av,borderColor:'#3b82f6',tension:.35,borderWidth:2},
+      {label:'Performance %',data:pf,borderColor:'#f59e0b',tension:.35,borderWidth:2},
+      {label:'Quality %',data:qu,borderColor:'#10b981',tension:.35,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},
+      scales:{y:{ticks:{callback:v=>v+'%'},suggestedMax:100}}}
+  });
+}
+
+/* ============ DOWNTIME PIE ============ */
+function renderDowntimePie(data){
+  const map = {};
+  data.forEach(r=>{
+    const reason = (r[COL.REASON]||'Unspecified').toString().trim();
+    map[reason] = (map[reason]||0) + parseNum(r[COL.DOWNTIME]);
+  });
+  const entries = Object.entries(map).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const labels = entries.map(e=>e[0]);
+  const values = entries.map(e=>e[1]);
+  const colors = ['#facc15','#3b82f6','#ef4444','#f97316','#10b981','#8b5cf6','#06b6d4','#ec4899','#a855f7','#14b8a6'];
+  const total = values.reduce((a,b)=>a+b,0) || 1;
+  document.getElementById('pieLegend').innerHTML = labels.map((l,i)=>`
+    <div class="legend-row">
+      <span class="dot" style="background:${colors[i%colors.length]}"></span>
+      <span class="lbl">${l}</span>
+      <span class="val">${values[i].toLocaleString()}</span>
+      <span class="pct">${(values[i]/total*100).toFixed(1)}%</span>
+    </div>`).join('');
+  const ctx = document.getElementById('pieChart');
+  if(charts.pie) charts.pie.destroy();
+  charts.pie = new Chart(ctx,{
+    type:'doughnut',
+    data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}
+  });
+}
+
+/* ============ SHIFT BARS ============ */
+function renderShiftBars(data){
+  const map = {};
+  data.forEach(r=>{
+    const item = r[COL.ITEM]; if(!item) return;
+    if(!map[item]) map[item] = {target:0,actual:0};
+    map[item].target += parseNum(r[COL.CAPACITY]);
+    map[item].actual += parseNum(r[COL.ACTUAL]);
+  });
+  const items = Object.keys(map).sort((a,b)=>map[b].target-map[a].target).slice(0,30);
+  const targets = items.map(i=>map[i].target);
+  const actuals = items.map(i=>map[i].actual);
+  const ctx = document.getElementById('barChart');
+  if(charts.bar) charts.bar.destroy();
+  charts.bar = new Chart(ctx,{
+    type:'bar',
+    data:{labels:items,datasets:[
+      {label:'Shift Targets',data:targets,backgroundColor:'#c7d2fe'},
+      {label:'Actual Yields',data:actuals,backgroundColor:'#6366f1'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top'}},
+      scales:{x:{ticks:{maxRotation:60,minRotation:45,font:{size:10},
+        callback:function(v){const l=this.getLabelForValue(v);return l.length>14?l.substr(0,14)+'…':l;}}}}}
+  });
+}
+
+/* ============ TABLE ============ */
+function renderTable(){
+  const search = (document.getElementById('searchBox').value||'').toLowerCase();
+  const data = getFiltered().filter(r =>
+    !search || r.some(c => String(c).toLowerCase().includes(search))
+  );
+  const tbody = document.querySelector('#recordsTable tbody');
+  if(!data.length){
+    tbody.innerHTML = `<tr><td colspan="9" class="loading">No records found.</td></tr>`;
+  } else {
+    tbody.innerHTML = data.map(r=>{
+      const cap=parseNum(r[COL.CAPACITY]);
+      const act=parseNum(r[COL.ACTUAL]);
+      const rej=parseNum(r[COL.REJECT]);
+      const oee = rowOEE(r);
+      const cls = oee>=85?'ok':oee>=60?'warn':'bad';
+      return `<tr>
+        <td>${r[COL.DATE]||''}</td>
+        <td><span class="chip">${r[COL.MACHINE]||''}</span></td>
+        <td>${r[COL.SHIFT]||''}</td>
+        <td class="ellipsis" title="${r[COL.ITEM]||''}">${r[COL.ITEM]||''}</td>
+        <td>${r[COL.SUPERVISOR]||'-'}</td>
+        <td class="num">${cap.toLocaleString()}</td>
+        <td class="num blue">${act.toLocaleString()}</td>
+        <td class="num red">${rej.toLocaleString()}</td>
+        <td><span class="oee-pill ${cls}">${oee.toFixed(2)}%</span></td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('rowCount').textContent = data.length+' records';
+}
+</script>
+</body>
+</html>
