@@ -19,10 +19,10 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,
 .live-dot{width:8px;height:8px;border-radius:50%;background:#10b981}
 .live-dot.pulse{animation:pulse 1s infinite}
 @keyframes pulse{0%{opacity:.3}50%{opacity:1}100%{opacity:.3}}
-.btn-ghost{padding:8px 14px;border:1.5px solid #e2e8f0;background:#fff;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px}
-.btn-ghost:hover{background:#f1f5f9}
-.btn-primary{padding:8px 18px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;box-shadow:0 4px 10px rgba(99,102,241,.3)}
-.btn-primary:hover{background:#4f46e5}
+.btn-ghost{padding:8px 14px;border:1.5px solid #e2e8f0;background:#fff;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;color:#0f172a;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all .2s}
+.btn-ghost:hover{background:#f1f5f9;border-color:#6366f1;color:#6366f1}
+.btn-primary{padding:8px 18px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;box-shadow:0 4px 10px rgba(99,102,241,.3);text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all .2s}
+.btn-primary:hover{background:#4f46e5;transform:translateY(-1px);box-shadow:0 6px 14px rgba(99,102,241,.4)}
 .filters{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .filter-item{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#475569;letter-spacing:.5px}
 .filters input,.filters select{padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fff}
@@ -89,7 +89,7 @@ tr:hover td{background:#f8fafc}
 <div class="top-bar"></div>
 
 <header class="topnav">
-  <button class="btn-ghost">← Home</button>
+  <a href="https://mahiya98.github.io/ALEL-/" class="btn-primary">🏠 Main Page</a>
   <div class="brand">
     <div class="logo">🏭</div>
     <div>
