@@ -51,7 +51,6 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,
 .kpi-sub{font-size:11px;color:#64748b;font-weight:600}
 .chart-card h3{font-size:13px;font-weight:700;color:#1e293b;letter-spacing:.5px;margin-bottom:14px}
 .chart-wrap{position:relative;height:340px}
-.chart-wrap.tall{height:380px}
 .table-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
 .table-head h3{font-size:13px;font-weight:700;letter-spacing:.5px;color:#1e293b}
 .rowcount{font-size:11px;color:#64748b;font-weight:600;margin-left:8px;background:#f1f5f9;padding:3px 8px;border-radius:10px}
@@ -151,17 +150,13 @@ tr:hover td{background:#f8fafc}
   </div>
 </section>
 
-<!-- ============ TREND CHART (now full width) ============ -->
+<!-- ============ TREND CHART (full width) ============ -->
 <section class="card chart-card">
   <h3>📈 OEE DAILY TREND</h3>
   <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
 </section>
 
-<!-- ============ SHIFT TARGET VS ACTUAL ============ -->
-<section class="card chart-card">
-  <h3>📊 SHIFT TARGET VS ACTUAL OUTPUT</h3>
-  <div class="chart-wrap tall"><canvas id="barChart"></canvas></div>
-</section>
+<!-- ❌ SHIFT TARGET VS ACTUAL OUTPUT SECTION REMOVED -->
 
 <!-- ============ TABLE ============ -->
 <section class="card">
@@ -193,9 +188,8 @@ const CONFIG = {
 };
 
 /* Column indexes (A=0, B=1, …)
-   UPDATED PER NEW REQUIREMENTS:
    A=OEE, B=Date, C=Shift, D=Machine, F=Item, I=Supervisor,
-   O=Capacity (Target), P=Downtime (NEW), T=Total Output, V=Good Yield,
+   O=Capacity (Target), P=Downtime, T=Total Output, V=Good Yield,
    X=Availability, Y=Performance, Z=Quality */
 const COL = {
   OEE:0,           // A
@@ -204,11 +198,11 @@ const COL = {
   MACHINE:3,       // D
   ITEM:5,          // F
   SUPERVISOR:8,    // I
-  CAPACITY:14,     // O (target for shift bar chart)
-  DOWNTIME:15,     // P (NEW – sum)
+  CAPACITY:14,     // O (target column in table)
+  DOWNTIME:15,     // P (sum)
   ACTUAL:19,       // T (sum)
   GOOD:21,         // V (sum)
-  REJECT:22,       // W (for wastage column in table)
+  REJECT:22,       // W (wastage column in table)
   AVAILABILITY:23, // X (avg)
   PERFORMANCE:24,  // Y (avg)
   QUALITY:25       // Z (avg)
@@ -224,14 +218,13 @@ function parseNum(v){
   const n = parseFloat(String(v).replace(/[, %]/g,''));
   return isNaN(n) ? 0 : n;
 }
-/* Returns the value as a percentage (0-100). Auto-detects if input is 0-1 decimal. */
 function asPct(v){
   const n = parseNum(v);
   if (n === 0) return 0;
   return n <= 1.5 ? n * 100 : n;
 }
 
-/* ============ SHEET LOADER (gviz JSON, no API key) ============ */
+/* ============ SHEET LOADER ============ */
 async function loadSheet(){
   const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&gid=${CONFIG.GID}`;
   const res = await fetch(url);
@@ -301,7 +294,6 @@ function render(){
   const data = getFiltered();
   renderKPIs(data);
   renderTrend(data);
-  renderShiftBars(data);
   renderTable();
 }
 
@@ -309,16 +301,14 @@ function render(){
 function avg(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
 
 function renderKPIs(data){
-  /* ===== SUMS ===== */
-  const totalActual   = data.reduce((s,r)=>s+parseNum(r[COL.ACTUAL]),0);   // T sum
-  const totalGood     = data.reduce((s,r)=>s+parseNum(r[COL.GOOD]),0);     // V sum
-  const totalDowntime = data.reduce((s,r)=>s+parseNum(r[COL.DOWNTIME]),0); // P sum
+  const totalActual   = data.reduce((s,r)=>s+parseNum(r[COL.ACTUAL]),0);
+  const totalGood     = data.reduce((s,r)=>s+parseNum(r[COL.GOOD]),0);
+  const totalDowntime = data.reduce((s,r)=>s+parseNum(r[COL.DOWNTIME]),0);
 
-  /* ===== AVERAGES (skip empty/zero rows) ===== */
-  const oee = avg(data.map(r=>asPct(r[COL.OEE])).filter(v=>v>0));          // A avg
-  const av  = avg(data.map(r=>asPct(r[COL.AVAILABILITY])).filter(v=>v>0)); // X avg
-  const pf  = avg(data.map(r=>asPct(r[COL.PERFORMANCE])).filter(v=>v>0));  // Y avg
-  const qu  = avg(data.map(r=>asPct(r[COL.QUALITY])).filter(v=>v>0));      // Z avg
+  const oee = avg(data.map(r=>asPct(r[COL.OEE])).filter(v=>v>0));
+  const av  = avg(data.map(r=>asPct(r[COL.AVAILABILITY])).filter(v=>v>0));
+  const pf  = avg(data.map(r=>asPct(r[COL.PERFORMANCE])).filter(v=>v>0));
+  const qu  = avg(data.map(r=>asPct(r[COL.QUALITY])).filter(v=>v>0));
 
   const machines = new Set(data.map(r=>r[COL.MACHINE]).filter(Boolean));
 
@@ -370,33 +360,6 @@ function renderTrend(data){
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},
       scales:{y:{ticks:{callback:v=>v+'%'},suggestedMax:100}}}
-  });
-}
-
-/* ============ SHIFT BARS ============ */
-function renderShiftBars(data){
-  const map = {};
-  data.forEach(r=>{
-    const item = r[COL.ITEM]; if(!item) return;
-    if(!map[item]) map[item] = {target:0,actual:0};
-    map[item].target += parseNum(r[COL.CAPACITY]);
-    map[item].actual += parseNum(r[COL.ACTUAL]);
-  });
-  const items = Object.keys(map).sort((a,b)=>map[b].target-map[a].target).slice(0,30);
-  const targets = items.map(i=>map[i].target);
-  const actuals = items.map(i=>map[i].actual);
-  const ctx = document.getElementById('barChart');
-  if(charts.bar) charts.bar.destroy();
-  charts.bar = new Chart(ctx,{
-    type:'bar',
-    data:{labels:items,datasets:[
-      {label:'Shift Targets',data:targets,backgroundColor:'#c7d2fe'},
-      {label:'Actual Yields',data:actuals,backgroundColor:'#6366f1'}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'top'}},
-      scales:{x:{ticks:{maxRotation:60,minRotation:45,font:{size:10},
-        callback:function(v){const l=this.getLabelForValue(v);return l.length>14?l.substr(0,14)+'…':l;}}}}}
   });
 }
 
