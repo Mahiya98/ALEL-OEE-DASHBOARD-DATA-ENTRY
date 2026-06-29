@@ -71,8 +71,8 @@ tr:hover td{background:#f8fafc}
 .oee-pill.bad{background:#fee2e2;color:#b91c1c}
 .foot{text-align:center;color:#94a3b8;font-size:12px;padding:18px}
 .loading{text-align:center;padding:40px;color:#64748b;font-size:14px}
-@media (max-width:1024px){.kpi-grid,.kpi-grid.three{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:600px){body{padding:10px}.topnav{flex-direction:column;align-items:flex-start}.brand-title{font-size:13px}.kpi-grid,.kpi-grid.three{grid-template-columns:1fr}.kpi-val{font-size:28px}.filters{font-size:12px}.big-num{font-size:24px}}
+@media(max-width:1024px){.kpi-grid,.kpi-grid.three{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){body{padding:10px}.topnav{flex-direction:column;align-items:flex-start}.brand-title{font-size:13px}.kpi-grid,.kpi-grid.three{grid-template-columns:1fr}.kpi-val{font-size:28px}.filters{font-size:12px}.big-num{font-size:24px}}
 </style>
 </head>
 <body>
@@ -102,11 +102,10 @@ tr:hover td{background:#f8fafc}
 </section>
 
 <section class="card machines-row">
-  <div class="icon-box">🛠</div>
+  <div class="icon-box">🖥</div>
   <div><div class="meta">ACTIVE MACHINES RUN</div><div class="big-num" id="kpiMachines">0</div></div>
 </section>
 
-<!-- ============ MAIN KPI CARDS ============ -->
 <section class="kpi-grid">
   <div class="kpi-card border-indigo">
     <div class="kpi-head">OVERALL OEE <span>📊</span></div>
@@ -134,14 +133,13 @@ tr:hover td{background:#f8fafc}
   </div>
 </section>
 
-<!-- ============ SUMMARY MINI CARDS (3 col) ============ -->
 <section class="kpi-grid three">
   <div class="kpi-card mini">
     <div class="icon-box sm purple">📦</div>
     <div><div class="meta">TOTAL OUTPUT</div><div class="big-num" id="kpiOutput">0</div><span class="unit">Pcs</span></div>
   </div>
   <div class="kpi-card mini">
-    <div class="icon-box sm green">📋</div>
+    <div class="icon-box sm green">📃</div>
     <div><div class="meta">GOOD YIELD</div><div class="big-num" id="kpiGood">0</div><span class="unit">Pcs</span></div>
   </div>
   <div class="kpi-card mini border-red">
@@ -150,19 +148,15 @@ tr:hover td{background:#f8fafc}
   </div>
 </section>
 
-<!-- ============ TREND CHART (full width) ============ -->
 <section class="card chart-card">
   <h3>📈 OEE DAILY TREND</h3>
   <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
 </section>
 
-<!-- ❌ SHIFT TARGET VS ACTUAL OUTPUT SECTION REMOVED -->
-
-<!-- ============ TABLE ============ -->
 <section class="card">
   <div class="table-head">
-    <h3>📋 FILTERED PRODUCTION RECORDS <span id="rowCount" class="rowcount"></span></h3>
-    <div class="search">🔎 <input id="searchBox" placeholder="Search records..."></div>
+    <h3>📃 FILTERED PRODUCTION RECORDS <span id="rowCount" class="rowcount"></span></h3>
+    <div class="search">🔍 <input id="searchBox" placeholder="Search records..."></div>
   </div>
   <div class="table-wrap">
     <table id="recordsTable">
@@ -171,7 +165,7 @@ tr:hover td{background:#f8fafc}
         <th>SUPERVISOR</th><th>TARGET (PCS)</th><th>ACTUAL (PCS)</th>
         <th>WASTAGE (PCS)</th><th>OEE %</th>
       </tr></thead>
-      <tbody><tr><td colspan="9" class="loading">Loading data from Google Sheets…</td></tr></tbody>
+      <tbody><tr><td colspan="9" class="loading">Loading data…</td></tr></tbody>
     </table>
   </div>
 </section>
@@ -181,8 +175,7 @@ tr:hover td{background:#f8fafc}
 <script>
 /* ============ CONFIG ============ */
 const CONFIG = {
-  SHEET_ID: '1WduS-Bgeab_1YTWc3pZ0WAOMEN_oE4DFmRH4OVT8D_I',
-  GID: '1203093323',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzsawM3rEkVqRsKKTYaLKwPjMYBDHEd4Kvb9Ed7G5e4EWrFje3U96f5YWkCL1Sol9Zc-Q/exec',
   REFRESH_MS: 60000,
   TARGET_OEE: 85
 };
@@ -190,7 +183,7 @@ const CONFIG = {
 /* Column indexes (A=0, B=1, …)
    A=OEE, B=Date, C=Shift, D=Machine, F=Item, I=Supervisor,
    O=Capacity (Target), P=Downtime, T=Total Output, V=Good Yield,
-   X=Availability, Y=Performance, Z=Quality */
+   W=Reject, X=Availability, Y=Performance, Z=Quality */
 const COL = {
   OEE:0,           // A
   DATE:1,          // B
@@ -198,14 +191,14 @@ const COL = {
   MACHINE:3,       // D
   ITEM:5,          // F
   SUPERVISOR:8,    // I
-  CAPACITY:14,     // O (target column in table)
-  DOWNTIME:15,     // P (sum)
-  ACTUAL:19,       // T (sum)
-  GOOD:21,         // V (sum)
-  REJECT:22,       // W (wastage column in table)
-  AVAILABILITY:23, // X (avg)
-  PERFORMANCE:24,  // Y (avg)
-  QUALITY:25       // Z (avg)
+  CAPACITY:14,     // O
+  DOWNTIME:15,     // P
+  ACTUAL:19,       // T
+  GOOD:21,         // V
+  REJECT:22,       // W
+  AVAILABILITY:23, // X
+  PERFORMANCE:24,  // Y
+  QUALITY:25       // Z
 };
 
 /* ============ STATE ============ */
@@ -214,27 +207,27 @@ let charts = {};
 
 /* ============ HELPERS ============ */
 function parseNum(v){
-  if (v==='' || v==null) return 0;
-  const n = parseFloat(String(v).replace(/[, %]/g,''));
-  return isNaN(n) ? 0 : n;
+  if(v===''||v==null) return 0;
+  const n=parseFloat(String(v).replace(/[, %]/g,''));
+  return isNaN(n)?0:n;
 }
 function asPct(v){
-  const n = parseNum(v);
-  if (n === 0) return 0;
-  return n <= 1.5 ? n * 100 : n;
+  const n=parseNum(v);
+  if(n===0) return 0;
+  return n<=1.5 ? n*100 : n;
 }
 
-/* ============ SHEET LOADER ============ */
+/* ============ SHEET LOADER (via Apps Script proxy) ============ */
 async function loadSheet(){
-  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&gid=${CONFIG.GID}`;
-  const res = await fetch(url);
-  const text = await res.text();
-  const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}')+1));
-  return json.table.rows.map(r => (r.c||[]).map(c => c==null ? '' : (c.f!=null ? c.f : c.v)));
+  const res = await fetch(CONFIG.API_URL);
+  if(!res.ok) throw new Error('Network response was not ok: ' + res.status);
+  const json = await res.json();
+  if(json.error) throw new Error(json.error);
+  return json.data;
 }
 
 /* ============ INIT ============ */
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async ()=>{
   await refreshAll();
   document.getElementById('refreshBtn').onclick = refreshAll;
   document.getElementById('resetBtn').onclick = resetFilters;
@@ -247,14 +240,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function refreshAll(){
   document.getElementById('liveDot').classList.add('pulse');
-  try {
+  try{
     RAW = await loadSheet();
     populateShiftFilter();
     render();
-  } catch(e){
+  }catch(e){
     console.error(e);
     document.querySelector('#recordsTable tbody').innerHTML =
-      `<tr><td colspan="9" class="loading">⚠ Could not load data. Make sure your sheet is shared as "Anyone with the link → Viewer".</td></tr>`;
+      `<tr><td colspan="9" class="loading">⚠ Could not load data. Check Apps Script deployment or network.</td></tr>`;
   }
   document.getElementById('liveDot').classList.remove('pulse');
 }
@@ -268,131 +261,121 @@ function resetFilters(){
 }
 
 function populateShiftFilter(){
-  const sel = document.getElementById('shiftFilter');
-  const cur = sel.value;
-  const shifts = [...new Set(RAW.map(r=>r[COL.SHIFT]).filter(Boolean))];
-  sel.innerHTML = '<option value="ALL">All Shifts</option>' +
+  const sel=document.getElementById('shiftFilter');
+  const cur=sel.value;
+  const shifts=[...new Set(RAW.map(r=>r[COL.SHIFT]).filter(Boolean))];
+  sel.innerHTML='<option value="ALL">All Shifts</option>'+
     shifts.map(s=>`<option value="${s}">${s}</option>`).join('');
-  sel.value = cur || 'ALL';
+  sel.value=cur||'ALL';
 }
 
 function getFiltered(){
-  const shift = document.getElementById('shiftFilter').value;
-  const from = document.getElementById('dateFrom').value;
-  const to = document.getElementById('dateTo').value;
+  const shift=document.getElementById('shiftFilter').value;
+  const from=document.getElementById('dateFrom').value;
+  const to=document.getElementById('dateTo').value;
   return RAW.filter(r=>{
     if(!r[COL.DATE]) return false;
     if(shift!=='ALL' && r[COL.SHIFT]!==shift) return false;
-    const d = new Date(r[COL.DATE]);
-    if(from && d < new Date(from)) return false;
-    if(to && d > new Date(to)) return false;
+    const d=new Date(r[COL.DATE]);
+    if(from && d<new Date(from)) return false;
+    if(to && d>new Date(to)) return false;
     return true;
   });
 }
 
 function render(){
-  const data = getFiltered();
+  const data=getFiltered();
   renderKPIs(data);
   renderTrend(data);
   renderTable();
 }
 
 /* ============ KPIs ============ */
-function avg(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function avg(arr){return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0;}
 
 function renderKPIs(data){
-  const totalActual   = data.reduce((s,r)=>s+parseNum(r[COL.ACTUAL]),0);
-  const totalGood     = data.reduce((s,r)=>s+parseNum(r[COL.GOOD]),0);
-  const totalDowntime = data.reduce((s,r)=>s+parseNum(r[COL.DOWNTIME]),0);
+  const totalActual=data.reduce((s,r)=>s+parseNum(r[COL.ACTUAL]),0);
+  const totalGood=data.reduce((s,r)=>s+parseNum(r[COL.GOOD]),0);
+  const totalDowntime=data.reduce((s,r)=>s+parseNum(r[COL.DOWNTIME]),0);
 
-  const oee = avg(data.map(r=>asPct(r[COL.OEE])).filter(v=>v>0));
-  const av  = avg(data.map(r=>asPct(r[COL.AVAILABILITY])).filter(v=>v>0));
-  const pf  = avg(data.map(r=>asPct(r[COL.PERFORMANCE])).filter(v=>v>0));
-  const qu  = avg(data.map(r=>asPct(r[COL.QUALITY])).filter(v=>v>0));
+  const oee=avg(data.map(r=>asPct(r[COL.OEE])).filter(v=>v>0));
+  const av=avg(data.map(r=>asPct(r[COL.AVAILABILITY])).filter(v=>v>0));
+  const pf=avg(data.map(r=>asPct(r[COL.PERFORMANCE])).filter(v=>v>0));
+  const qu=avg(data.map(r=>asPct(r[COL.QUALITY])).filter(v=>v>0));
 
-  const machines = new Set(data.map(r=>r[COL.MACHINE]).filter(Boolean));
+  const machines=new Set(data.map(r=>r[COL.MACHINE]).filter(Boolean));
 
-  set('kpiMachines',     machines.size);
-  set('kpiOEE',          oee.toFixed(2)+'%');
-  set('kpiAvailability', av.toFixed(2)+'%');
-  set('kpiPerformance',  pf.toFixed(2)+'%');
-  set('kpiQuality',      qu.toFixed(2)+'%');
-  set('kpiOutput',       totalActual.toLocaleString());
-  set('kpiGood',         totalGood.toLocaleString());
-  set('kpiDowntime',     totalDowntime.toLocaleString());
+  set('kpiMachines',machines.size);
+  set('kpiOEE',oee.toFixed(2)+'%');
+  set('kpiAvailability',av.toFixed(2)+'%');
+  set('kpiPerformance',pf.toFixed(2)+'%');
+  set('kpiQuality',qu.toFixed(2)+'%');
+  set('kpiOutput',totalActual.toLocaleString());
+  set('kpiGood',totalGood.toLocaleString());
+  set('kpiDowntime',totalDowntime.toLocaleString());
 
-  document.getElementById('oeeBar').style.width   = Math.min(oee,100)+'%';
-  document.getElementById('availBar').style.width = Math.min(av,100)+'%';
-  document.getElementById('perfBar').style.width  = Math.min(pf,100)+'%';
-  document.getElementById('qualBar').style.width  = Math.min(qu,100)+'%';
+  document.getElementById('oeeBar').style.width=Math.min(oee,100)+'%';
+  document.getElementById('availBar').style.width=Math.min(av,100)+'%';
+  document.getElementById('perfBar').style.width=Math.min(pf,100)+'%';
+  document.getElementById('qualBar').style.width=Math.min(qu,100)+'%';
 }
-function set(id,val){ document.getElementById(id).textContent = val; }
+function set(id,val){document.getElementById(id).textContent=val;}
 
-/* ============ TREND ============ */
+/* ============ TREND CHART ============ */
 function renderTrend(data){
-  const byDate = {};
+  const byDate={};
   data.forEach(r=>{
-    const d = r[COL.DATE]; if(!d) return;
-    if(!byDate[d]) byDate[d] = {av:[],pf:[],qu:[],oee:[]};
-    byDate[d].av.push(asPct(r[COL.AVAILABILITY]));
-    byDate[d].pf.push(asPct(r[COL.PERFORMANCE]));
-    byDate[d].qu.push(asPct(r[COL.QUALITY]));
-    byDate[d].oee.push(asPct(r[COL.OEE]));
+    const d=r[COL.DATE]; if(!d) return;
+    if(!byDate[d]) byDate[d]=[];
+    byDate[d].push(asPct(r[COL.OEE]));
   });
-  const labels = Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b));
-  const oee=[],av=[],pf=[],qu=[];
-  labels.forEach(d=>{
-    av.push(avg(byDate[d].av).toFixed(2));
-    pf.push(avg(byDate[d].pf).toFixed(2));
-    qu.push(avg(byDate[d].qu).toFixed(2));
-    oee.push(avg(byDate[d].oee).toFixed(2));
-  });
-  const ctx = document.getElementById('trendChart');
+  const labels=Object.keys(byDate).sort();
+  const values=labels.map(d=>avg(byDate[d].filter(v=>v>0)));
+
   if(charts.trend) charts.trend.destroy();
-  charts.trend = new Chart(ctx,{
+  const ctx=document.getElementById('trendChart').getContext('2d');
+  charts.trend=new Chart(ctx,{
     type:'line',
-    data:{labels,datasets:[
-      {label:'OEE %',data:oee,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.1)',tension:.35,fill:true,borderWidth:2},
-      {label:'Availability %',data:av,borderColor:'#3b82f6',tension:.35,borderWidth:2},
-      {label:'Performance %',data:pf,borderColor:'#f59e0b',tension:.35,borderWidth:2},
-      {label:'Quality %',data:qu,borderColor:'#10b981',tension:.35,borderWidth:2}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},
-      scales:{y:{ticks:{callback:v=>v+'%'},suggestedMax:100}}}
+    data:{
+      labels:labels.map(l=>{const p=l.split('-');return p[2]+'/'+p[1];}),
+      datasets:[
+        {label:'OEE %',data:values,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.1)',fill:true,tension:.3,pointRadius:4,pointBackgroundColor:'#6366f1'},
+        {label:'Target',data:Array(labels.length).fill(CONFIG.TARGET_OEE),borderColor:'#ef4444',borderDash:[6,4],pointRadius:0,fill:false}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}
   });
 }
 
 /* ============ TABLE ============ */
 function renderTable(){
-  const search = (document.getElementById('searchBox').value||'').toLowerCase();
-  const data = getFiltered().filter(r =>
-    !search || r.some(c => String(c).toLowerCase().includes(search))
-  );
-  const tbody = document.querySelector('#recordsTable tbody');
-  if(!data.length){
-    tbody.innerHTML = `<tr><td colspan="9" class="loading">No records found.</td></tr>`;
-  } else {
-    tbody.innerHTML = data.map(r=>{
-      const cap = parseNum(r[COL.CAPACITY]);
-      const act = parseNum(r[COL.ACTUAL]);
-      const rej = parseNum(r[COL.REJECT]);
-      const oee = asPct(r[COL.OEE]);
-      const cls = oee>=85?'ok':oee>=60?'warn':'bad';
-      return `<tr>
-        <td>${r[COL.DATE]||''}</td>
-        <td><span class="chip">${r[COL.MACHINE]||''}</span></td>
-        <td>${r[COL.SHIFT]||''}</td>
-        <td class="ellipsis" title="${r[COL.ITEM]||''}">${r[COL.ITEM]||''}</td>
-        <td>${r[COL.SUPERVISOR]||'-'}</td>
-        <td class="num">${cap.toLocaleString()}</td>
-        <td class="num blue">${act.toLocaleString()}</td>
-        <td class="num red">${rej.toLocaleString()}</td>
-        <td><span class="oee-pill ${cls}">${oee.toFixed(2)}%</span></td>
-      </tr>`;
-    }).join('');
+  const data=getFiltered();
+  const q=document.getElementById('searchBox').value.toLowerCase();
+  const filtered=q?data.filter(r=>r.join(' ').toLowerCase().includes(q)):data;
+
+  document.getElementById('rowCount').textContent=filtered.length+' records';
+
+  const tbody=document.querySelector('#recordsTable tbody');
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="9" class="loading">No records found.</td></tr>';
+    return;
   }
-  document.getElementById('rowCount').textContent = data.length+' records';
+
+  tbody.innerHTML=filtered.map(r=>{
+    const oee=asPct(r[COL.OEE]);
+    const cls=oee>=85?'ok':oee>=60?'warn':'bad';
+    return `<tr>
+      <td>${r[COL.DATE]||''}</td>
+      <td><span class="chip">${r[COL.MACHINE]||''}</span></td>
+      <td>${r[COL.SHIFT]||''}</td>
+      <td class="ellipsis" title="${r[COL.ITEM]||''}">${r[COL.ITEM]||''}</td>
+      <td>${r[COL.SUPERVISOR]||''}</td>
+      <td class="num">${parseNum(r[COL.CAPACITY]).toLocaleString()}</td>
+      <td class="num blue">${parseNum(r[COL.ACTUAL]).toLocaleString()}</td>
+      <td class="num red">${parseNum(r[COL.REJECT]).toLocaleString()}</td>
+      <td><span class="oee-pill ${cls}">${oee.toFixed(1)}%</span></td>
+    </tr>`;
+  }).join('');
 }
 </script>
 </body>
